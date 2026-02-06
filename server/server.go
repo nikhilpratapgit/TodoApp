@@ -6,8 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/nikhilpratapgit/TodoApp/handler"
 	"github.com/nikhilpratapgit/TodoApp/middleware"
-
-	//"github.com/nikhilpratapgit/TodoApp/utils"
 	"github.com/nikhilpratapgit/TodoApp/utils"
 )
 

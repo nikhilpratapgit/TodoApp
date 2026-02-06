@@ -42,8 +42,7 @@ func GetUserByEmail(email, password string) (string, error) {
 	SQL := `
 		SELECT id, password
 		FROM users
-		WHERE email = $1 AND archived_at IS NULL
-		RETURNING id,password;
+		WHERE email = $1 AND archived_at IS NULL;
 	`
 
 	var user models.UserAuth
@@ -108,7 +107,7 @@ func CreateTodo(userID, name, description string, expiringAt time.Time) (*models
 	}
 	return todo, nil
 }
-func GetTodos(userID, name string, date time.Time, complete bool) ([]models.Todos, error) {
+func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
 	SQL := `
 			SELECT id,
 			       user_id,
@@ -120,17 +119,17 @@ func GetTodos(userID, name string, date time.Time, complete bool) ([]models.Todo
 			FROM todos
 			WHERE user_id =$1
 			AND (
-			    $2::boolean IS NULL or complete=$2
+			    $2 = '' or complete=$2::boolean
 			)
 			AND (
-			    $3::TIMESTAMPTZ IS NULL or expiring_at<=$3
+			    $3='' or expiring_at<=$3::TIMESTAMPTZ
 			)
 			AND (
 			    $4::TEXT IS NULL OR name LIKE'%'||$4||'%'
 			)
 			order by expiring_at
 			`
-	var todos []models.Todos
+	todos := make([]models.Todos, 0)
 
 	err := database.Todo.Select(&todos, SQL, userID, complete, date, name)
 	if err != nil {
@@ -234,4 +233,10 @@ func ValidateSession(sessionID string) (uuid.UUID, error) {
 	}
 
 	return userID, nil
+}
+func GetArchivedAt(sessionID string) (*time.Time, error) {
+	SQL := `SELECT archived_at FROM user_session where id=$1`
+	var archivedAt *time.Time
+	err := database.Todo.Get(&archivedAt, SQL, sessionID)
+	return archivedAt, err
 }

@@ -148,16 +148,24 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 	userCtx := middleware.UserContext(r)
 	userID := userCtx.UserID
 
-	//model make complete to string
-	var complete bool
-	complete = utils.ParseBool(completeStr)
-
-	expiringAt, err := utils.ParseExpiringAt(expiringAtStr)
-	if err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err, "invalid time")
+	//complete := utils.ParseBool(completeStr)
+	//
+	//expiringAt, err := utils.ParseExpiringAt(expiringAtStr)
+	//if err != nil {
+	//	utils.RespondError(w, http.StatusBadRequest, err, "invalid time")
+	//}
+	//	var date time.Time
+	if expiringAtStr != "" {
+		d, err := time.Parse("2006-01-02", expiringAtStr)
+		if err != nil {
+			utils.RespondError(w, http.StatusBadRequest, err, "invalid date")
+			return
+		}
+		if d.Before(time.Now()) {
+			expiringAtStr = ""
+		}
 	}
-
-	todos, err := dbHelper.GetTodos(userID, search, expiringAt, complete)
+	todos, err := dbHelper.GetTodos(userID, search, expiringAtStr, completeStr)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "Failed to fetch todos")
 		return

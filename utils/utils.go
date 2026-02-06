@@ -78,25 +78,25 @@ func ParseBool(str string) bool {
 	}
 	return true
 }
-func ParseExpiringAt(str string) (time.Time, error) {
+func ParseExpiringAt(str string) (*time.Time, error) {
 	var date time.Time
 	if str != "" {
 		d, err := time.Parse("2006-01-02", str)
 		if err != nil {
-			return time.Now(), err
+			return nil, err
 		}
 		if d.Before(time.Now()) {
-			return time.Now(), errors.New("invalid time")
+			return nil, errors.New("invalid time")
 		}
 		date = d
 	}
-	return date, nil
+	return &date, nil
 }
 func GenerateJWT(usrID, sessionID string) (string, error) {
 	claims := jwt.MapClaims{
 		"userId":    usrID,
 		"sessionId": sessionID,
-		"exp":       time.Now().Add(time.Minute * 10).Unix(),
+		"exp":       time.Now().Add(time.Minute * 100).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
