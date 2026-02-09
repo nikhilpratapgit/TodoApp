@@ -49,7 +49,7 @@ func Auth(next http.Handler) http.Handler {
 			utils.RespondError(w, http.StatusUnauthorized, nil, "invalid token")
 			return
 		}
-
+		//userID := claimValues["userId"].(string)
 		//userID, err := dbHelper.ValidateSession(sessionID)
 		//if err != nil {
 		//	http.Error(w, err.Error(), http.StatusUnauthorized)

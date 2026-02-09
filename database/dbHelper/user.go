@@ -79,33 +79,19 @@ func DeleteSessionByToken(Token string) error {
 	return nil
 }
 
-//	func GetUserBySession(Token string) (string, error) {
-//		SQL := `SELECT user_id FROM user_session
-//	           where id =$1 AND archived_at IS NULL `
-//		var userID string
-//		err := database.Todo.Get(&userID, SQL, Token)
-//		if err != nil {
-//			if errors.Is(err, sql.ErrNoRows) {
-//				return "", errors.New("invalid or expired session")
-//			}
-//			return "", err
-//		}
-//		return userID, nil
-//	}
-func CreateTodo(userID, name, description string, expiringAt time.Time) (*models.Todos, error) {
+func CreateTodo(userID, name, description string, expiringAt time.Time) (models.Todos, error) {
 	SQL := `INSERT INTO todos (user_id,name,description,expiring_at) 
-			VALUES ($1,$2,$3,$4) RETURNING id,created_at;`
-	todo := &models.Todos{
-		UserId:      userID,
-		Name:        name,
-		Description: description,
-		ExpiringAt:  expiringAt,
-	}
-	err := database.Todo.QueryRow(SQL, userID, name, description, expiringAt).Scan(&todo.Id, &todo.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return todo, nil
+			VALUES ($1,$2,$3,$4) RETURNING id,
+			user_id,
+			name,
+			description,
+			complete,
+			expiring_at,
+			created_at;`
+
+	var todo models.Todos
+	err := database.Todo.Get(&todo, SQL, userID, name, description, expiringAt)
+	return todo, err
 }
 func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
 	SQL := `
@@ -118,6 +104,7 @@ func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
 				   created_at
 			FROM todos
 			WHERE user_id =$1
+			AND archived_at IS NULL
 			AND (
 			    $2 = '' or complete=$2::boolean
 			)
@@ -128,6 +115,7 @@ func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
 			    $4::TEXT IS NULL OR name LIKE'%'||$4||'%'
 			)
 			order by expiring_at
+			
 			`
 	todos := make([]models.Todos, 0)
 
@@ -140,7 +128,8 @@ func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
 func GetTodoByID(todoID, userID string) (*models.Todos, error) {
 	SQL := `SELECT id,user_id,name,description,complete,expiring_at,created_at
 			FROM todos where id = $1 
-			AND user_id=$2 `
+			AND user_id=$2 
+			AND archived_at IS NULL `
 	var todo models.Todos
 
 	err := database.Todo.Get(&todo, SQL, todoID, userID)
@@ -153,7 +142,12 @@ func GetTodoByID(todoID, userID string) (*models.Todos, error) {
 	return &todo, nil
 }
 func DeleteTodoById(userID, todoID string) error {
-	SQL := `DELETE FROM todos WHERE id=$1 AND user_id =$2;`
+	SQL := `UPDATE todos
+			SET archived_at = NOW()
+			WHERE id = $1
+			AND user_id =$2
+			AND archived_at IS NULL;
+`
 
 	_, err := database.Todo.Exec(SQL, todoID, userID)
 	if err != nil {
@@ -165,7 +159,8 @@ func UpdateTodoById(name, description, complete string, expiringAt string, todoI
 	SQL := `UPDATE todos 
 			SET name=$1,description=$2,complete=$3,expiring_at=$4
 			WHERE id=$5 
-			and user_id=$6;`
+			AND user_id=$6;
+			AND archived_at IS NULL`
 
 	_, err := database.Todo.Exec(
 		SQL, name, description, complete, expiringAt, todoID, userID)

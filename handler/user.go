@@ -55,12 +55,18 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := utils.GenerateJWT(userID, sessionID)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to generate token")
+		return
+	}
+
 	utils.RespondJSON(w, http.StatusCreated, struct {
 		Message string `json:"message"`
 		Token   string `json:"token"`
 	}{
 		Message: "user created successfully",
-		Token:   sessionID,
+		Token:   token,
 	})
 }
 
@@ -147,14 +153,6 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 
 	userCtx := middleware.UserContext(r)
 	userID := userCtx.UserID
-
-	//complete := utils.ParseBool(completeStr)
-	//
-	//expiringAt, err := utils.ParseExpiringAt(expiringAtStr)
-	//if err != nil {
-	//	utils.RespondError(w, http.StatusBadRequest, err, "invalid time")
-	//}
-	//	var date time.Time
 	if expiringAtStr != "" {
 		d, err := time.Parse("2006-01-02", expiringAtStr)
 		if err != nil {
