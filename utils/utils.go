@@ -5,15 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt"
-	"github.com/joho/godotenv"
-
 	//"github.com/neo4j/neo4j-go-driver/neo4j/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -43,7 +38,7 @@ func RespondJSON(w http.ResponseWriter, statusCode int, body interface{}) {
 	w.WriteHeader(statusCode)
 	if body != nil {
 		if err := EncodeJSONBody(w, body); err != nil {
-			fmt.Println("Failed to respond JSON with error: %v", err)
+			fmt.Printf("Failed to respond JSON with error: %v", err)
 		}
 	}
 }
@@ -92,20 +87,21 @@ func ParseExpiringAt(str string) (*time.Time, error) {
 	}
 	return &date, nil
 }
-func GenerateJWT(usrID, sessionID string) (string, error) {
-	claims := jwt.MapClaims{
-		"userId":    usrID,
-		"sessionId": sessionID,
-		"exp":       time.Now().Add(time.Minute * 100).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
-}
-func GoDotEnvVariable(key string) string {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 
-	return os.Getenv(key)
-}
+//func GenerateJWT(usrID, sessionID string) (string, error) {
+//	claims := jwt.MapClaims{
+//		"userId":    usrID,
+//		"sessionId": sessionID,
+//		"exp":       time.Now().Add(time.Minute * 100).Unix(),
+//	}
+//	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+//	return token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
+//}
+//func GoDotEnvVariable(key string) string {
+//	err := godotenv.Load(".env")
+//	if err != nil {
+//		log.Fatal("Error loading .env file")
+//	}
+//
+//	return os.Getenv(key)
+//}

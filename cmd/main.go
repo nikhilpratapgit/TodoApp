@@ -4,22 +4,41 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/nikhilpratapgit/TodoApp/database"
 	"github.com/nikhilpratapgit/TodoApp/server"
 )
 
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
 func main() {
 
 	srv := server.SetupRoutes()
 	// make envs
-	if err := database.ConnectandMigrate(
-		"localhost",
-		"5432",
-		"postgres",
-		"local",
-		"local",
-		database.SSLModeDisable); err != nil {
+
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5432")
+	dbUser := getEnv("DB_USER", "local")
+	dbPassword := getEnv("DB_PASSWORD", "local")
+	dbName := getEnv("DB_NAME", "mercury-dev")
+	sslMode := getEnv("DB_SSLMODE", string(database.SSLModeDisable))
+	serverPort := getEnv("SERVER_PORT", "8080")
+
+	err := database.ConnectandMigrate(
+		dbHost,
+		dbPort,
+		dbName,
+		dbUser,
+		dbPassword,
+		database.SSLMode(sslMode),
+	)
+	if err != nil {
 		fmt.Printf("Failed while initialize and migrate database: %v", err)
 	}
 	fmt.Println("server is running")
@@ -29,6 +48,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("server started at:8080")
+	fmt.Println("server started at:8080", serverPort)
 
 }

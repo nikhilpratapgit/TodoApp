@@ -217,7 +217,11 @@ func UpdateTodoById(name, description, complete string, expiringAt string, todoI
 //		return todos, nil
 //	}
 func ValidateSession(sessionID string) (uuid.UUID, error) {
-	SQL := `SELECT user_id from user_session where id=$1 AND archived_at IS NULL;`
+	SQL := `SELECT user_id 
+			from user_session 
+			where id=$1 
+			  AND archived_at IS NULL;
+`
 
 	var userID uuid.UUID
 
@@ -229,9 +233,10 @@ func ValidateSession(sessionID string) (uuid.UUID, error) {
 
 	return userID, nil
 }
-func GetArchivedAt(sessionID string) (*time.Time, error) {
-	SQL := `SELECT archived_at FROM user_session where id=$1`
-	var archivedAt *time.Time
-	err := database.Todo.Get(&archivedAt, SQL, sessionID)
-	return archivedAt, err
-}
+
+//func GetArchivedAt(sessionID string) (*time.Time, error) {
+//	SQL := `SELECT archived_at FROM user_session where id=$1`
+//	var archivedAt *time.Time
+//	err := database.Todo.Get(&archivedAt, SQL, sessionID)
+//	return archivedAt, err
+//}

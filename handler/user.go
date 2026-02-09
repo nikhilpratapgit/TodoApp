@@ -55,18 +55,18 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := utils.GenerateJWT(userID, sessionID)
-	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err, "failed to generate token")
-		return
-	}
+	//token, err := utils.GenerateJWT(userID, sessionID)
+	//if err != nil {
+	//	utils.RespondError(w, http.StatusInternalServerError, err, "failed to generate token")
+	//	return
+	//}
 
 	utils.RespondJSON(w, http.StatusCreated, struct {
 		Message string `json:"message"`
 		Token   string `json:"token"`
 	}{
 		Message: "user created successfully",
-		Token:   token,
+		Token:   sessionID,
 	})
 }
 
@@ -93,15 +93,15 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create user session")
 		return
 	}
-	token, err := utils.GenerateJWT(userID, sessionID)
-	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err, "failed to generate token")
-		return
-	}
+	//token, err := utils.GenerateJWT(userID, sessionID)
+	//if err != nil {
+	//	utils.RespondError(w, http.StatusInternalServerError, err, "failed to generate token")
+	//	return
+	//}
 	utils.RespondJSON(w, http.StatusCreated, struct {
 		Token string `json:"token"`
 	}{
-		Token: token,
+		Token: sessionID,
 	})
 }
 

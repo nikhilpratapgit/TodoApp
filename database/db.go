@@ -64,7 +64,6 @@ func migrateUp(db *sqlx.DB) error {
 		}
 		return fmt.Errorf("migration failed: %w", err)
 	}
-
 	fmt.Println("Migrations applied successfully")
 	return nil
 }
