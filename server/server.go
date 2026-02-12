@@ -38,6 +38,7 @@ func SetupRoutes() *Server {
 			v1.Post("/todo", handler.CreateTodo)
 			v1.Put("/todo/{id}", handler.UpdateTodoById)
 			v1.Delete("/todo/{id}", handler.DeleteTodoById)
+			v1.Delete("/userDelete", handler.DeleteUserById)
 			//v1.Get("/todos-complete", handler.CompleteTodo)
 			//v1.Get("/todos-incomplete", handler.IncompleteTodo)
 			//v1.Get("/upcoming-todos", handler.UpcomingTodos)

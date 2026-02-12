@@ -71,22 +71,22 @@ func migrateUp(db *sqlx.DB) error {
 //	func ShutdownDatabase() error {
 //		return Todo.Close()
 //	}
-//func Tx(fn func(tx *sqlx.Tx) error) error {
-//	tx, err := Todo.Beginx()
-//	if err != nil {
-//		return fmt.Errorf("failed to start a transaction: %v", err)
-//	}
-//	defer func() {
-//		if err != nil {
-//			if rollBackErr := tx.Rollback(); rollBackErr != nil {
-//				fmt.Println("failed to rollback tx : %s", rollBackErr)
-//			}
-//			return
-//		}
-//		if commitErr := tx.Commit(); commitErr != nil {
-//			fmt.Println("failed to commit: %s", commitErr)
-//		}
-//	}()
-//	err = fn(tx)
-//	return err
-//}
+func Tx(fn func(tx *sqlx.Tx) error) error {
+	tx, err := Todo.Beginx()
+	if err != nil {
+		return fmt.Errorf("failed to start a transaction: %v", err)
+	}
+	defer func() {
+		if err != nil {
+			if rollBackErr := tx.Rollback(); rollBackErr != nil {
+				fmt.Printf("failed to rollback tx : %s", rollBackErr)
+			}
+			return
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			fmt.Printf("failed to commit: %s", commitErr)
+		}
+	}()
+	err = fn(tx)
+	return err
+}

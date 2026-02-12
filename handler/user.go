@@ -3,11 +3,15 @@ package handler
 import (
 	"database/sql"
 	"errors"
+	"strconv"
+
 	//"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
+	"github.com/nikhilpratapgit/TodoApp/database"
 	"github.com/nikhilpratapgit/TodoApp/database/dbHelper"
 	"github.com/nikhilpratapgit/TodoApp/middleware"
 	"github.com/nikhilpratapgit/TodoApp/models"
@@ -42,31 +46,28 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed while hashing password")
 		return
 	}
+	var sessionId string
+	var sessionErr error
 
-	userID, saveErr := dbHelper.CreateUser(registerUser.Name, registerUser.Email, hashPassword)
-	if saveErr != nil {
-		utils.RespondError(w, http.StatusNotFound, saveErr, "failed to create user")
+	TxErr := database.Tx(func(tx *sqlx.Tx) error {
+		userID, saveErr := dbHelper.CreateUserTx(tx, registerUser.Name, registerUser.Email, hashPassword)
+		if saveErr != nil {
+			return saveErr
+		}
+		sessionId, sessionErr = dbHelper.CreateUserSessionTx(tx, userID)
+		return sessionErr
+	})
+	if TxErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, TxErr, "deletion failed")
 		return
 	}
-
-	sessionID, sessionErr := dbHelper.CreateUserSession(userID)
-	if sessionErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create user session")
-		return
-	}
-
-	//token, err := utils.GenerateJWT(userID, sessionID)
-	//if err != nil {
-	//	utils.RespondError(w, http.StatusInternalServerError, err, "failed to generate token")
-	//	return
-	//}
 
 	utils.RespondJSON(w, http.StatusCreated, struct {
 		Message string `json:"message"`
 		Token   string `json:"token"`
 	}{
 		Message: "user created successfully",
-		Token:   sessionID,
+		Token:   sessionId,
 	})
 }
 
@@ -150,7 +151,18 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 	completeStr := r.URL.Query().Get("status")
 	expiringAtStr := r.URL.Query().Get("expiringAt")
 	search := r.URL.Query().Get("search")
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
 
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 5
+	}
+	offset := (page - 1) * limit
 	userCtx := middleware.UserContext(r)
 	userID := userCtx.UserID
 	if expiringAtStr != "" {
@@ -163,7 +175,7 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 			expiringAtStr = ""
 		}
 	}
-	todos, err := dbHelper.GetTodos(userID, search, expiringAtStr, completeStr)
+	todos, err := dbHelper.GetTodos(userID, search, expiringAtStr, completeStr, limit, offset)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "Failed to fetch todos")
 		return
@@ -243,6 +255,30 @@ func UpdateTodoById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.RespondJSON(w, http.StatusOK, "updated successfully")
+}
+func DeleteUserById(w http.ResponseWriter, r *http.Request) {
+	userCtx := middleware.UserContext(r)
+	userID := userCtx.UserID
+
+	TxErr := database.Tx(func(tx *sqlx.Tx) error {
+
+		UserErr := dbHelper.DeleteUserTx(tx, userID)
+		if UserErr != nil {
+			return UserErr
+		}
+		TodosErr := dbHelper.DeleteTodosByUserId(tx, userID)
+		if TodosErr != nil {
+			return TodosErr
+		}
+		SessionErr := dbHelper.DeleteSessionByUser(tx, userID)
+		if SessionErr != nil {
+			return SessionErr
+		}
+		return nil
+	})
+	if TxErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, TxErr, "user deletion failed")
+	}
 }
 
 //func CompleteTodo(w http.ResponseWriter, r *http.Request) {

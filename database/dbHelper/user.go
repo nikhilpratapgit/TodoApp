@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/nikhilpratapgit/TodoApp/database"
 	"github.com/nikhilpratapgit/TodoApp/models"
 	"github.com/nikhilpratapgit/TodoApp/utils"
@@ -28,6 +29,13 @@ func CreateUser(name, email, password string) (string, error) {
 	err := database.Todo.Get(&userID, SQL, name, email, password)
 	return userID, err
 }
+func CreateUserTx(tx *sqlx.Tx, name, email, password string) (string, error) {
+	SQL := `INSERT INTO users(name, email, password)
+			VALUES ($1, TRIM(LOWER($2)), $3) RETURNING id;`
+	var userID string
+	err := tx.Get(&userID, SQL, name, email, password)
+	return userID, err
+}
 func CreateUserSession(userID string) (string, error) {
 	SQL := `INSERT INTO user_session(user_id)
 			VALUES ($1) RETURNING id;`
@@ -38,6 +46,17 @@ func CreateUserSession(userID string) (string, error) {
 	}
 	return sessionID, nil
 }
+func CreateUserSessionTx(tx *sqlx.Tx, userID string) (string, error) {
+	SQL := `INSERT INTO user_session(user_id)
+			VALUES ($1) RETURNING id;`
+	var sessionID string
+	err := tx.Get(&sessionID, SQL, userID)
+	if err != nil {
+		return "", err
+	}
+	return sessionID, nil
+}
+
 func GetUserByEmail(email, password string) (string, error) {
 	SQL := `
 		SELECT id, password
@@ -93,7 +112,7 @@ func CreateTodo(userID, name, description string, expiringAt time.Time) (models.
 	err := database.Todo.Get(&todo, SQL, userID, name, description, expiringAt)
 	return todo, err
 }
-func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
+func GetTodos(userID, name, date, complete string, limit, offset int) ([]models.Todos, error) {
 	SQL := `
 			SELECT id,
 			       user_id,
@@ -115,11 +134,11 @@ func GetTodos(userID, name, date, complete string) ([]models.Todos, error) {
 			    $4::TEXT IS NULL OR name LIKE'%'||$4||'%'
 			)
 			order by expiring_at
-			
+			Limit $5 offset $6
 			`
 	todos := make([]models.Todos, 0)
 
-	err := database.Todo.Select(&todos, SQL, userID, complete, date, name)
+	err := database.Todo.Select(&todos, SQL, userID, complete, date, name, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -234,9 +253,45 @@ func ValidateSession(sessionID string) (uuid.UUID, error) {
 	return userID, nil
 }
 
-//func GetArchivedAt(sessionID string) (*time.Time, error) {
-//	SQL := `SELECT archived_at FROM user_session where id=$1`
-//	var archivedAt *time.Time
-//	err := database.Todo.Get(&archivedAt, SQL, sessionID)
-//	return archivedAt, err
-//}
+//	func GetArchivedAt(sessionID string) (*time.Time, error) {
+//		SQL := `SELECT archived_at FROM user_session where id=$1`
+//		var archivedAt *time.Time
+//		err := database.Todo.Get(&archivedAt, SQL, sessionID)
+//		return archivedAt, err
+//	}
+func DeleteUserTx(tx *sqlx.Tx, userID string) error {
+	SQL := `UPDATE users
+			SET archived_at = NOW()
+			WHERE id=$1
+			AND archived_at IS NULL
+			`
+	_, err := tx.Exec(SQL, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func DeleteTodosByUserId(tx *sqlx.Tx, userID string) error {
+	SQL := `UPDATE todos
+			SET archived_at=NOW()
+			WHERE user_id=$1
+			AND archived_at IS NULL 
+`
+	_, err := tx.Exec(SQL, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func DeleteSessionByUser(tx *sqlx.Tx, userID string) error {
+	SQL := `UPDATE user_session
+			SET archived_at=NOW()
+			WHERE user_id=$1
+			AND archived_at IS NULL 
+			`
+	_, err := tx.Exec(SQL, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
